@@ -328,6 +328,15 @@ func (c *Controller) advanceCanary(name string, namespace string) {
 
 	// scale canary to zero if promotion has finished
 	if cd.Status.Phase == flaggerv1.CanaryPhaseFinalising {
+		c.recordEventInfof(cd, "Canary Sleep Over")
+		time.Sleep(100 * time.Second)
+		c.runPreScaleToZeroCanaryRolloutHooks(cd, flaggerv1.CanaryPhaseSucceeded)
+		if scalerReconciler != nil {
+			if err := scalerReconciler.PauseTargetScaler(cd); err != nil {
+				c.recordEventWarningf(cd, "%v", err)
+				return
+			}
+		}
 		if err := canaryController.ScaleToZero(cd); err != nil {
 			c.recordEventWarningf(cd, "%v", err)
 			return
